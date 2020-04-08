@@ -1,0 +1,15 @@
+*.pyc
+*~
+hud.db
+build
+working
+test_output
+MANIFEST
+dist
+*-env
+*.egg-info
+.eggs/
+/hud/data/ver
+/vault_pass.txt
+nohup.out
+json/
