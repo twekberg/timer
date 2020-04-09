@@ -6,10 +6,12 @@ Brings up a small gui that has two button. One to add a new row and one to stop.
 
 """
 TODO:
-Implement hide.
-Implement new day
-Write report that details N days of data, starting with today.
 --------------------DONE--------------------
+Wrote report that details N days of data, starting with today.
+
+Implemented hide. Was able to unhide and retain the time value.
+
+Removed New Day since it isn't really needed.
 Need a .config file of some sort to 
   auto-save interval
 Write callback to Save to
@@ -46,7 +48,7 @@ Change add new data button to allow one to enter a value for the new button.
 
 
 import tkinter as tk
-from tkinter import simpledialog
+from tkinter import simpledialog, filedialog
 from datetime import datetime, timedelta
 import os
 import os.path
@@ -67,19 +69,33 @@ class App(tk.Frame):
         self.row_detail_list = []
 
         # Look for a JSON file for today.
-        today_filename = self.get_today_data_path()
+        today_filename = self.get_day_data_path()
         if os.path.isfile(today_filename):
+            # Found a file for today.
             with open(today_filename) as tf:
                 today_data = json.load(tf)
         else:
-            today_data = []
+            # Look in the past for a data file and use those categories, with time=0
+            # as a basis for today's categories. Look back at most 7 days.
+            for day in range(1, 8):
+                day_filename = self.get_day_data_path(day)
+                if os.path.isfile(day_filename):
+                    # Found a file for this day.
+                    with open(day_filename) as df:
+                        day_data = json.load(df)
+                    today_data = [ {'category': d['category'], 'time': '0:00:00'} for d in day_data]
+                    break
+            else:
+                today_data = []
+
+        self.config_setup()
 
         menubar = tk.Menu(self.button_frame)
         menubar.add_command(label="Add", command=self.add_new_data)
-        menubar.add_command(label="Hide", command=lambda: print('Hide'))
+        menubar.add_command(label="Hide", command=self.hide)
         menubar.add_command(label="Pause", command=self.pause)
         menubar.add_command(label="Save", command=self.save)
-        menubar.add_command(label="New Day", command=lambda: print('New Day'))
+        menubar.add_command(label="Report", command=self.report)
         menubar.add_command(label="Exit", command=self.exit)
         root.config(menu=menubar)
 
@@ -93,28 +109,54 @@ class App(tk.Frame):
                 self.label_off = rd.label.cget('background')
 
         
-    def get_today_data_path(self):
+    def hide(self):
+        """
+        Hide rows selected by the user.
+        """
+        delete_us = []
+        for rd in self.row_detail_list:
+            if rd.cb_var.get():
+                delete_us.append(rd)
+        if delete_us:
+            # Make sure the category/time values are in the JSON file before we remove them
+            self.save()
+
+            for rd in delete_us:
+                self.row_detail_list.remove(rd)
+            self.refresh_display()
+        else:
+            tk.messagebox.showinfo("Missing", "Click the checkbox next to the category you want to hide.")
+
+
+    def get_day_data_path(self, days_ago=0):
+        """
+        Get the data path for today, or for a day in the past.
+        """
         home = os.environ.get('USERPROFILE').replace('\\', '/')
         self.data_dir= os.path.join(home, 'TimeData')
         if not os.path.isdir(self.data_dir):
             mkdir(self.data_dir)
-        today_filename = os.path.join(self.data_dir, datetime.now().strftime('%Y-%m-%d.json'))
+        today_filename = os.path.join(
+            self.data_dir,
+            (datetime.now()-timedelta(days=days_ago)).strftime('%Y-%m-%d.json'))
         return today_filename
 
 
-    def config_setup(self)
+    def config_setup(self):
         # Look for a config file, also JSON
         config_file = os.path.join(self.data_dir, 'time_data_config.json')
-        if isfile(config_file):
+        if os.path.isfile(config_file):
             self.auto_save_interval = None;
             with open(config_file) as jin:
-                ccnfig = json.load(jin)
-            self.auto_save_interval = config['auto_save_interval']
+                config = json.load(jin)
+                self.auto_save_interval = config['auto_save_interval']
         else:
-            auto_save_interval = 60 # minutes
-            config = {'auto_save_interval': auto_save_interval}
+            self.auto_save_interval = 60 # minutes
+            # Default to every 60 minutes, but save it in the config file so the
+            # user can change it.
+            config = {'auto_save_interval': self.auto_save_interval}
             with open(config_file, 'w') as jout:
-            json.dump(config, jout, sort_keys=True,
+                json.dump(config, jout, sort_keys=True,
                       indent=4, separators=(',', ': '))
         if self.auto_save_interval:
             self.button_frame.after(self.auto_save_interval * 60, self.save)
@@ -128,12 +170,49 @@ class App(tk.Frame):
 
 
     def save(self):
-        today_filename = self.get_today_data_path()
-        l = [{'category': rd.category, 'time': rd.label.cget('text')} for rd in self.row_detail_list]
-        l.sort(key=lambda d: d['category'].lower())
+        # Keep the times for categories that have been hidden.
+        today_filename = self.get_day_data_path()
+        if os.path.isfile(today_filename):
+            with open(today_filename) as tf:
+                today_data = json.load(tf)
+        else:
+            today_data = []
+        for rd in self.row_detail_list:
+            for td in today_data:
+                if td['category'] == rd.category:
+                    # Existing category needs updating.
+                    td['time'] = rd.time
+                    break
+            else:
+                # New category
+                td['category'] = rd.category
+                rd['time'] = rd.time
+
+        today_data.sort(key=lambda d: d['category'].lower())
         with open(today_filename, 'w') as jout:
-            json.dump(l, jout, sort_keys=True,
+            json.dump(today_data, jout, sort_keys=True,
                       indent=4, separators=(',', ': '))
+
+
+    def report(self):
+        print(self.data_dir)
+        report_filename = filedialog.asksaveasfilename(initialdir = self.data_dir.replace('C:','/cygdrive/c'),
+                                                          title = "Write Report",
+                                                          filetypes = (("text files","*.txt"),
+                                                                       ("all files","*.*")))
+
+        with open(report_filename, 'w') as rep_o:
+            print('Time Data report written', datetime.now(), file=rep_o)
+            for day in range(7):
+                day_filename = self.get_day_data_path(day)
+                if os.path.isfile(day_filename):
+                    print('', file=rep_o)
+                    with open(day_filename) as df:
+                        day_data = json.load(df)
+                    print('Report for ', day_filename.rsplit('/', maxsplit=1)[1], file=rep_o)
+                    for dd in day_data:
+                        print('  %s: %s' % (dd['category'], dd['time']), file=rep_o)
+
 
 
     def exit(self):
@@ -155,7 +234,7 @@ class App(tk.Frame):
                 if self.button_off == b.cget('background'):
                     self.active_row = rd
                     button.config(background='pale green')
-                    secs = int(label.cget('text'))
+                    secs = self.hms_to_seconds(label.cget('text'))
                     # Only one is active at a time, so might as well store start_time here.
                     self.start_time = datetime.now() - timedelta(seconds=secs)
                     frame.after(1000, self.process_next_second)
@@ -168,6 +247,21 @@ class App(tk.Frame):
                 label.config(background=self.label_off)
 
                 
+    def hms_to_seconds(self, s):
+        """
+        Convert HH:MM:SS to seconds.
+        """
+        dt = datetime.strptime(s, '%H:%M:%S')
+        return int(timedelta(hours=dt.hour, minutes=dt.minute, seconds=dt.second).total_seconds())
+
+
+    def seconds_to_hms(self, secs):
+        """
+        Convert seconds to HH:MM:SS. The leading 0 on HH is removed.
+        """
+        return str(timedelta(seconds = secs))
+
+
     def process_next_second(self):
         """
         Advanced to the next second.
@@ -176,10 +270,12 @@ class App(tk.Frame):
         rd = self.active_row
         if not rd:
             # Paused when we still have the 'after' method active.
-            # Not it is not active so we do nothing.
+            # Now that it is not active so we do nothing.
             return
         secs = int((datetime.now() - self.start_time).total_seconds())
-        rd.label.config(text=str(secs))
+        time = self.seconds_to_hms(secs)
+        rd.time = time
+        rd.label.config(text=time)
         rd.frame.after(1000, self.process_next_second)
         
 
@@ -187,12 +283,39 @@ class App(tk.Frame):
         """
         Add a new category
         """
-        t = self.get_input("New Category", "New category")
-        if not t:
+        category = self.get_input("New Category", "New category")
+        if not category:
             return
-        rd = RowDetail(t, str(0), self.button_frame, self.category_clicked)
-        self.row_detail_list.insert(0, rd)
 
+        # Check for duplicates.
+        for rd in self.row_detail_list:
+            if rd.category == category:
+                tk.messagebox.showinfo("Duplicate", "That category is already defined.")
+                return
+
+        # If this category is already in the current JSON file, then it was hidden and
+        # is now being brought back.
+        today_filename = self.get_day_data_path()
+        if os.path.isfile(today_filename):
+            with open(today_filename) as tf:
+                today_data = json.load(tf)
+        else:
+            today_data = []
+        initial_time = '0:00:00'
+        for td in today_data:
+            if td['category'] == category:
+                initial_time = td['time']
+                break
+                
+        rd = RowDetail(category, initial_time, self.button_frame, self.category_clicked)
+        self.row_detail_list.insert(0, rd)
+        self.refresh_display()
+
+
+    def refresh_display(self):
+        """
+        The row_detail_list has changed. Refresh that part of the display.
+        """
         for widget in self.button_frame.children.values():
             widget.grid_forget() 
 
@@ -227,6 +350,18 @@ class RowDetail():
         self.cb.pack(side= tk.LEFT)
         self.button.pack(side= tk.LEFT)
         self.label.pack(side= tk.LEFT)
+
+
+    # Need when this object is in a list.
+    def __repr__(self):
+        return self.__str__()
+
+
+    def __str__(self):
+        """
+        Display a nice repreentation of a RowDetail object.
+        """
+        return 'RowDetail(catetory=%s, time=%s)' % (self.category, self.time)
 
 
 if __name__ == "__main__":
