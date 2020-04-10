@@ -1,0 +1,9 @@
+#!/bin/bash
+#
+# Bring up the timer program
+#
+#------------------------------------------------------------------------------
+
+export DISPLAY=localhost:0
+source timer-env/bin/activate
+python timer.py

@@ -1,3 +1,4 @@
+#/usr/bin/env python
 """
 Brings up a small gui that has two button. One to add a new row and one to stop.
 """
