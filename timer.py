@@ -12,11 +12,11 @@ Wrote report that details N days of data, starting with today.
 Implemented hide. Was able to unhide and retain the time value.
 
 Removed New Day since it isn't really needed.
-Need a .config file of some sort to 
+Need a .config file of some sort to
   auto-save interval
 Write callback to Save to
   Load today's JSON file, if it exists.
-  Store button.text and timedelta 
+  Store button.text and timedelta
 
 Use frame.after(1000, new_second)`
   calculate new timedelta and store in widget_2.text
@@ -34,7 +34,7 @@ Define a class for the row detail
   timedelta
   start_time - when the button was last clicked
 
-Changed the buttons to 
+Changed the buttons to
   Add    Hide
   Pause  Save
   Exit   New day    # resets timedeltas to 0
@@ -108,7 +108,7 @@ class App(tk.Frame):
             if not self.label_off:
                 self.label_off = rd.label.cget('background')
 
-        
+
     def hide(self):
         """
         Hide rows selected by the user.
@@ -159,14 +159,20 @@ class App(tk.Frame):
                 json.dump(config, jout, sort_keys=True,
                       indent=4, separators=(',', ': '))
         if self.auto_save_interval:
-            self.button_frame.after(self.auto_save_interval * 60, self.save)
-        
+            self.button_frame.after(self.auto_save_interval * 60 * 1000, self.auto_save)
+
 
     def pause(self):
         for rd in self.row_detail_list:
             rd.button.config(background=self.button_off)
             rd.label.config(background=self.label_off)
         self.active_row = None
+
+
+    def auto_save(self):
+        self.save()
+        self.button_frame.after(self.auto_save_interval * 60 * 1000, self.save)
+        print(datetime.now(), 'Auto save')
 
 
     def save(self):
@@ -184,9 +190,11 @@ class App(tk.Frame):
                     td['time'] = rd.time
                     break
             else:
-                # New category
+                # New category, not stored in JSON file.
+                td = dict()
                 td['category'] = rd.category
-                rd['time'] = rd.time
+                td['time'] = rd.time
+                today_data.append(td)
 
         today_data.sort(key=lambda d: d['category'].lower())
         with open(today_filename, 'w') as jout:
@@ -246,7 +254,7 @@ class App(tk.Frame):
                 button.config(background=self.button_off)
                 label.config(background=self.label_off)
 
-                
+
     def hms_to_seconds(self, s):
         """
         Convert HH:MM:SS to seconds.
@@ -277,7 +285,7 @@ class App(tk.Frame):
         rd.time = time
         rd.label.config(text=time)
         rd.frame.after(1000, self.process_next_second)
-        
+
 
     def add_new_data(self):
         """
@@ -365,7 +373,8 @@ class RowDetail():
 
 
 if __name__ == "__main__":
-    root = tk.Tk() 
+    root = tk.Tk()
+    root.title('timer')
     root.geometry('200x300')
     my_app = App(root)
     root.mainloop()
