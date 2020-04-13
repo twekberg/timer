@@ -93,10 +93,12 @@ class App(tk.Frame):
         menubar = tk.Menu(self.button_frame)
         menubar.add_command(label="Add", command=self.add_new_data)
         menubar.add_command(label="Hide", command=self.hide)
+        menubar.add_command(label="Del", command=self.delete_category)
         menubar.add_command(label="Pause", command=self.pause)
         menubar.add_command(label="Save", command=self.save)
         menubar.add_command(label="Report", command=self.report)
         menubar.add_command(label="Exit", command=self.exit)
+        menubar.add_command(label="Help", command=self.help)
         root.config(menu=menubar)
 
         for (i, row) in enumerate(today_data):
@@ -113,19 +115,38 @@ class App(tk.Frame):
         """
         Hide rows selected by the user.
         """
-        delete_us = []
+        hide_us = []
         for rd in self.row_detail_list:
             if rd.cb_var.get():
-                delete_us.append(rd)
-        if delete_us:
+                hide_us.append(rd)
+        if hide_us:
             # Make sure the category/time values are in the JSON file before we remove them
             self.save()
 
-            for rd in delete_us:
+            for rd in hide_us:
                 self.row_detail_list.remove(rd)
             self.refresh_display()
         else:
             tk.messagebox.showinfo("Missing", "Click the checkbox next to the category you want to hide.")
+
+
+    def delete_category(self):
+        delete_us = []
+        exclude_list = []
+        for rd in self.row_detail_list:
+            if rd.cb_var.get():
+                delete_us.append(rd)
+                exclude_list.append(rd.button.cget('text'))
+                
+        if delete_us:
+            # Remove them from the GUI and then save.
+            # This will retain any hidden categories, but delete these.
+            for rd in delete_us:
+                self.row_detail_list.remove(rd)
+            self.refresh_display()
+            self.save(exclude_list)
+        else:
+            tk.messagebox.showinfo("Missing", "Click the checkbox next to the category you want to delete.")
 
 
     def get_day_data_path(self, days_ago=0):
@@ -171,11 +192,11 @@ class App(tk.Frame):
 
     def auto_save(self):
         self.save()
-        self.button_frame.after(self.auto_save_interval * 60 * 1000, self.save)
+        self.button_frame.after(self.auto_save_interval * 60 * 1000, self.auto_save)
         print(datetime.now(), 'Auto save')
 
 
-    def save(self):
+    def save(self, exclude_list=[]):
         # Keep the times for categories that have been hidden.
         today_filename = self.get_day_data_path()
         if os.path.isfile(today_filename):
@@ -196,6 +217,11 @@ class App(tk.Frame):
                 td['time'] = rd.time
                 today_data.append(td)
 
+        for delete_me in exclude_list:
+            for td in today_data:
+                 if td['category'] == delete_me:
+                     today_data.remove(td)
+                     break
         today_data.sort(key=lambda d: d['category'].lower())
         with open(today_filename, 'w') as jout:
             json.dump(today_data, jout, sort_keys=True,
@@ -209,6 +235,8 @@ class App(tk.Frame):
                                                           filetypes = (("text files","*.txt"),
                                                                        ("all files","*.*")))
 
+        if not report_filename:
+            return
         with open(report_filename, 'w') as rep_o:
             print('Time Data report written', datetime.now(), file=rep_o)
             for day in range(7):
@@ -227,6 +255,16 @@ class App(tk.Frame):
         self.save()
         root.quit()
         root.destroy()
+
+
+    def help(self):
+        tk.messagebox.showinfo("Help", """Add - add a new or previously existing category.
+Hide - click on the checkbox for a category to hide, then click Hide. Any time data is retained in the file.
+Del - click on the checkbox for a category to delete, then click Del. These categories are removed from the file.
+Pause - stop the current timer.
+Save - save the timers now.
+Report - generate a report for the past 7 days. You specify where to save it.
+Exit - save the timers and exit this program.""")
 
 
     def category_clicked(self, b, l):
