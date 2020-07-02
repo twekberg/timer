@@ -193,7 +193,6 @@ class App(tk.Frame):
     def auto_save(self):
         self.save()
         self.button_frame.after(self.auto_save_interval * 60 * 1000, self.auto_save)
-        print(datetime.now(), 'Auto save')
 
 
     def save(self, exclude_list=[]):
@@ -229,12 +228,10 @@ class App(tk.Frame):
 
 
     def report(self):
-        print(self.data_dir)
         report_filename = filedialog.asksaveasfilename(initialdir = self.data_dir.replace('C:','/cygdrive/c'),
                                                           title = "Write Report",
                                                           filetypes = (("text files","*.txt"),
                                                                        ("all files","*.*")))
-
         if not report_filename:
             return
         with open(report_filename, 'w') as rep_o:
