@@ -69,8 +69,13 @@ def main(args):
                         continue
                     t = datetime.strptime(d['time'], '%H:%M:%S')
                     m = t.hour * 60 + t.minute + t.second / 60
-                    month_data[d['category']].append(':spend %2.2fm %s' % (m, spend_date))
-        except FileNotFoundError:
+                    if m < 60:
+                        time_flag = 'm'
+                    else:
+                        time_flag = 'h'
+                        m = m / 60.0
+                    month_data[d['category']].append(':spend %2.2f%s %s' % (m, time_flag, spend_date))
+        except IOError:
             # Ignore missing files. Probably weekends.
             pass
         this_date += timedelta(1)
