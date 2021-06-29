@@ -410,6 +410,6 @@ class RowDetail():
 if __name__ == "__main__":
     root = tk.Tk()
     root.title('timer')
-    root.geometry('200x410')
+    root.geometry('220x410')
     my_app = App(root)
     root.mainloop()
