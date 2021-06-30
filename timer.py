@@ -76,8 +76,9 @@ class App(tk.Frame):
                 today_data = json.load(tf)
         else:
             # Look in the past for a data file and use those categories, with time=0
-            # as a basis for today's categories. Look back at most 7 days.
-            for day in range(1, 8):
+            # as a basis for today's categories. Look back at most 100 days. This
+            # many days accounts for a long vacation.
+            for day in range(1, 101):
                 day_filename = self.get_day_data_path(day)
                 if os.path.isfile(day_filename):
                     # Found a file for this day.
