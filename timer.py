@@ -6,6 +6,7 @@ Brings up a small gui that has two button. One to add a new row and one to stop.
 
 """
 TODO:
+Make this work when the day changes.
 --------------------DONE--------------------
 Wrote report that details N days of data, starting with today.
 
@@ -196,9 +197,9 @@ class App(tk.Frame):
         self.button_frame.after(self.auto_save_interval * 60 * 1000, self.auto_save)
 
 
-    def save(self, exclude_list=[]):
+    def save(self, exclude_list=[], days_ago=0):
         # Keep the times for categories that have been hidden.
-        today_filename = self.get_day_data_path()
+        today_filename = self.get_day_data_path(days_ago)
         if os.path.isfile(today_filename):
             with open(today_filename) as tf:
                 today_data = json.load(tf)
@@ -311,6 +312,7 @@ Exit - save the timers and exit this program.""")
         Advanced to the next second.
         Record and advance one more second.
         """
+        self.check_day_advance()
         rd = self.active_row
         if not rd:
             # Paused when we still have the 'after' method active.
@@ -321,6 +323,21 @@ Exit - save the timers and exit this program.""")
         rd.time = time
         rd.label.config(text=time)
         rd.frame.after(1000, self.process_next_second)
+
+
+    def check_day_advance(self):
+        """
+        Check to see if we have moved on to another day.
+        """
+        days_ago = datetime.now().toordinal() - self.start_time.toordinal()
+        if days_ago:
+            # New day. Save data for the old day.
+            self.save(days_ago = days_ago)
+            self.start_time = datetime.now()
+            # Reset all counters back to 0:00:00.
+            for rd in self.row_detail_list:
+                rd['time'] = '0:00:00'
+            self.refresh_display()
 
 
     def add_new_data(self):
@@ -411,6 +428,8 @@ class RowDetail():
 if __name__ == "__main__":
     root = tk.Tk()
     root.title('timer')
-    root.geometry('220x410')
+    # Position window in the middle display just above the eyeballs.
+    # Positioning using +NNN for the Y coordinate didn't work, but -nnn worked fine.
+    root.geometry('220x410+3621-564')
     my_app = App(root)
     root.mainloop()
