@@ -430,6 +430,15 @@ if __name__ == "__main__":
     root.title('timer')
     # Position window in the middle display just above the eyeballs.
     # Positioning using +NNN for the Y coordinate didn't work, but -nnn worked fine.
-    root.geometry('220x410+3621-564')
+    #root.geometry('220x410+3621-564')  # Screen 2 2560 x 1440
+    #root.geometry('220x410+2340-560')  # Screen 2 1280 x 768
+    #  increase X, move right
+    #  increase abs(Y) move up.
+    # Run xev. Position mouse where you want the bottom left corner to
+    # be. That defines the X coordinate. The abs(Y) is not clear. An
+    # appoximation is the screen width of screen2  (1400 for example),
+    # subtracting the bottom left mouse Y  (e.g. 574) = 826. Make
+    # adjustments from there.
+    root.geometry('220x410+2460-885')   # Screen 2 1400 x 1058
     my_app = App(root)
     root.mainloop()
