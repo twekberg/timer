@@ -336,7 +336,7 @@ Exit - save the timers and exit this program.""")
             self.start_time = datetime.now()
             # Reset all counters back to 0:00:00.
             for rd in self.row_detail_list:
-                rd['time'] = '0:00:00'
+                rd.time = '0:00:00'
             self.refresh_display()
 
 
@@ -439,6 +439,6 @@ if __name__ == "__main__":
     # appoximation is the screen width of screen2  (1400 for example),
     # subtracting the bottom left mouse Y  (e.g. 574) = 826. Make
     # adjustments from there.
-    root.geometry('220x410+2460-885')   # Screen 2 1400 x 1058
+    root.geometry('220x410+2460-875')   # Screen 2 1400 x 1058
     my_app = App(root)
     root.mainloop()
